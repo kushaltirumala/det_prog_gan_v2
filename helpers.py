@@ -35,7 +35,7 @@ def run_epoch(train, step_size, model, exp_data, clip, optimizer=None, batch_siz
             nn.utils.clip_grad_norm(model.parameters(), clip)
             optimizer.step()
         
-        losses.append(batch_loss.data.cpu().numpy()[0])
+        losses.append(batch_loss.item())
 
     return np.mean(losses)
 
