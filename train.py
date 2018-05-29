@@ -131,8 +131,8 @@ win_pre_step_change = None
 
 # continue a previous experiment
 if args.cont and args.subsample < 16:
-    print("loading model with step size {}...".format(args.subsample*2))
-    state_dict = torch.load(save_path+'model/policy_step'+str(args.subsample*2)+'_training.pth')
+    print("loading model with step size {}...".format(args.subsample*8))
+    state_dict = torch.load(save_path+'model/policy_step'+str(args.subsample*8)+'_training.pth')
     policy_net.load_state_dict(state_dict, strict=False)
     
     test_loss = run_epoch(False, args.subsample, policy_net, test_data, clip)

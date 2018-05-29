@@ -16,7 +16,7 @@ python train.py \
 --pre_min_lr 1e-4 \
 --batch_size 64 \
 --pretrain 30 \
---subsample 8 \
+--subsample 1 \
 --discrim_rnn_dim 128 \
 --discrim_layers 1 \
 --policy_learning_rate 1e-5 \
