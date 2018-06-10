@@ -82,7 +82,8 @@ def update_policy(policy_net, optimizer_policy, discrim_net, discrim_criterion, 
     optimizer_policy.step()
 
 # sample and draw all 5 level trajectories, used in test_model.py
-def test_sample(policy_net, expert_data, use_gpu, i_iter, size=64, name="sampling", draw=False):
+def test_sample(policy_net, expert_data, use_gpu, i_iter, size=64, name="sampling", draw=False, path=None, one_level=None):
+    print(path)
     exp_ind = torch.from_numpy(np.random.choice(expert_data.shape[0], size)).long()
     data = expert_data[exp_ind].clone()
     seq_len = data.shape[0]
@@ -90,6 +91,7 @@ def test_sample(policy_net, expert_data, use_gpu, i_iter, size=64, name="samplin
         data = data.cuda()
     data = Variable(data.squeeze().transpose(0, 1))
     # data: seq_length * batch_size * 10
+
 
     samples16 = policy_net.sample16(data[::16], seq_len = 5)
     samples8 = policy_net.sample8(data[::8], seq_len = 8, macro_data = samples16)
@@ -100,13 +102,31 @@ def test_sample(policy_net, expert_data, use_gpu, i_iter, size=64, name="samplin
     mod_stats = {}
     exp_stats = {}
 
+
+    if one_level:
+        if one_level == 16:
+            samples_real = samples16
+        if one_level == 8:
+            samples_real = samples8
+        if one_level == 4:
+            samples_real = samples4
+        if one_level == 2:
+            samples_real = samples2
+        if one_level == 1:
+            samples_real = samples1
+
+
     if draw:
-        _ = draw_data(samples16[:-1].data, name + '_stepsize_16', i_iter)
-        _ = draw_data(samples8[:-1].data, name + '_stepsize_8', i_iter)
-        _ = draw_data(samples4[:-1].data, name + '_stepsize_4', i_iter)
-        _ = draw_data(samples2[:-1].data, name + '_stepsize_2', i_iter)
-        mod_stats = draw_data(samples1.data, name, i_iter)
-        exp_stats = draw_data(data.data, name + '_expert', i_iter)
+        if one_level:
+            _ = draw_data(samples_real[:-1].data, name + '_stepsize_'+str(one_level), i_iter, path=path, test=True)
+        else:
+            _ = draw_data(samples16[:-1].data, name + '_stepsize_16', i_iter, path=path, test=True)
+            _ = draw_data(samples8[:-1].data, name + '_stepsize_8', i_iter, path=path, test=True)
+            _ = draw_data(samples4[:-1].data, name + '_stepsize_4', i_iter, path=path, test=True)
+            _ = draw_data(samples2[:-1].data, name + '_stepsize_2', i_iter, path=path, test=True)
+
+        mod_stats = draw_data(samples1.data, name, i_iter, path=path, test=True)
+        exp_stats = draw_data(data.data, name + '_expert', i_iter, path=path, test=True)
     
     return mod_stats, exp_stats    
 
@@ -193,7 +213,7 @@ def ave_rotation(actions):
     return ret
 
 # draw and compute statistics
-def draw_data(model_states, name, i_iter, burn_in=0):
+def draw_data(model_states, name, i_iter, burn_in=0, path=None, test=False):
     print("Drawing")
     stats = {}
     model_actions = model_states[1:, :, :] - model_states[:-1, :, :]
@@ -216,12 +236,17 @@ def draw_data(model_states, name, i_iter, burn_in=0):
     draw_data = model_states.cpu().numpy()[:, 0, :] 
     draw_data = unnormalize(draw_data)
     colormap = ['b', 'r', 'g', 'm', 'y', 'c']
+    save_name = "imgs/{}_{}_offense".format(name, i_iter)
+    if test:
+        save_name = path + "{}_{}_offense".format(name, i_iter)
+
+    print(save_name)
     plot_sequence(draw_data, macro_goals=None, colormap=colormap[:5], \
-                  save_name="imgs/{}_{}_offense".format(name, i_iter), burn_in=burn_in)
+                  save_name=save_name, burn_in=burn_in)
 
     return stats
 
-def test_fixed_data(policy_net, exp_state, name, i_iter, step_size, num_draw=1):
+def test_fixed_data(policy_net, exp_state, name, i_iter, step_size, num_draw=1, path=None):
     if step_size == 1:
         samples = policy_net.sample1(exp_state)
     elif step_size == 2:
@@ -233,5 +258,5 @@ def test_fixed_data(policy_net, exp_state, name, i_iter, step_size, num_draw=1):
     elif step_size == 16:
         samples = policy_net.sample16(exp_state)
     
-    draw_data(samples.data, name, i_iter)
-    draw_data(exp_state.data, name + '_expert', i_iter)
+    draw_data(samples.data, name, i_iter, path=path, test=True)
+    draw_data(exp_state.data, name + '_expert', i_iter, path=path, test=True)

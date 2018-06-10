@@ -32,9 +32,11 @@ parser.add_argument('--rnn8_dim', type=int, default=150)
 parser.add_argument('--rnn16_dim', type=int, default=100)
 parser.add_argument('--n_layers', type=int, default=2)
 parser.add_argument('--subsample', type=int, default=1)
+parser.add_argument('--cuda', action='store_true', default=False, help='use GPU')
 
 args = parser.parse_args()
-use_gpu = True
+use_gpu = args.cuda
+print(use_gpu)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 if use_gpu:
@@ -55,15 +57,15 @@ params = {
 }
 
 save_path = 'saved/%03d/' % args.trial
-if not os.path.exists(save_path):
-    os.makedirs(save_path)
-    os.makedirs(save_path+'model/')
+# if not os.path.exists(save_path):
+#     os.makedirs(save_path)
+#     os.makedirs(save_path+'model/')
 
 # define and load model
 policy_net = PROG_RNN(params).double()
 if use_gpu:
     policy_net = policy_net.cuda()
-policy_state_dict = torch.load(save_path+'model/policy_step1_training.pth')
+policy_state_dict = torch.load(save_path+'model/policy_step' + str(args.subsample)+'_training.pth')
 policy_net.load_state_dict(policy_state_dict, strict=False)
 
 # load test data
@@ -78,22 +80,22 @@ win_step_change = None
 win_ave_player_dis = None
 win_diff_max_min = None
 win_ave_angle = None
-if os.path.exists('imgs'):
-    shutil.rmtree('imgs')
-if not os.path.exists('imgs'):
-    os.makedirs('imgs')
+if os.path.exists('saved_images/' + str(args.trial)+'/'):
+    shutil.rmtree('saved_images/' + str(args.trial)+'/')
+if not os.path.exists('saved_images/' + str(args.trial)+'/'):
+    os.makedirs('saved_images/' + str(args.trial)+'/')
 
 # test on a fixed set of data
 fixed_test_data = Variable(test_data[:5].squeeze().transpose(0, 1))
 if use_gpu:
     fixed_test_data = fixed_test_data.cuda()
-test_fixed_data(policy_net, fixed_test_data, 'fixed', 0, args.subsample, num_draw=1)
+test_fixed_data(policy_net, fixed_test_data, 'fixed', 0, args.subsample, num_draw=1, path='saved_images/' + str(args.trial)+'/')
 
 # test model
 for i_iter in range(args.max_iter_num):
     print(i_iter)
     mod_stats, exp_stats = \
-        test_sample(policy_net, test_data, use_gpu, i_iter, draw=True)
+        test_sample(policy_net, test_data, use_gpu, i_iter, draw=True, path='saved_images/' + str(args.trial)+'/', one_level=args.subsample)
 
     update = 'append' if i_iter > 0 else None
     win_path_length = vis.line(X = np.array([i_iter]), \
