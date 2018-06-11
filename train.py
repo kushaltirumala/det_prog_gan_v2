@@ -265,7 +265,7 @@ if args.pretrain_disc_iter > 250:
     torch.save(policy_net.state_dict(), save_path+'model/policy_step'+str(args.subsample)+'_pretrained.pth')
     torch.save(discrim_net.state_dict(), save_path+'model/discrim_step'+str(args.subsample)+'_pretrained.pth')
 
-test_fixed_data(policy_net, fixed_test_data, 'pretrained', 0, args.subsample, 1)
+test_fixed_data(policy_net, fixed_test_data, 'pretrained', 0, args.subsample, 1, path="imgs/")
 
 # GAN training
 train_discrim = True
