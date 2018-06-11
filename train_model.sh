@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python train.py \
---trial 103 \
+--trial 104 \
 --model PROG_RNN \
 --y_dim 10 \
 --h_dim 200 \
@@ -10,13 +10,14 @@ python train.py \
 --rnn4_dim 200 \
 --rnn8_dim 150 \
 --rnn16_dim 100 \
+--rnn32_dim 50 \
 --n_layers 2 \
 --clip 10 \
 --pre_start_lr 1e-3 \
 --pre_min_lr 1e-4 \
 --batch_size 64 \
 --pretrain 30 \
---subsample 16 \
+--subsample 32 \
 --discrim_rnn_dim 128 \
 --discrim_layers 1 \
 --policy_learning_rate 1e-5 \

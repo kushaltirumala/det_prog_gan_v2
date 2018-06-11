@@ -50,12 +50,24 @@ class PROG_RNN(nn.Module):
         self.params = params
         y_dim = params['y_dim']
         h_dim = params['h_dim']
+        rnn32_dim = params['rnn16_dim']
         rnn16_dim = params['rnn16_dim']
         rnn8_dim = params['rnn8_dim']
         rnn4_dim = params['rnn4_dim']
         rnn2_dim = params['rnn2_dim']
         rnn1_dim = params['rnn1_dim']
         n_layers = params['n_layers']
+
+        self.gru32 = nn.GRU(y_dim, rnn32_dim, n_layers)
+        self.dec32 = nn.Sequential(
+            nn.Linear(rnn32_dim, h_dim),
+            nn.ReLU(),
+            nn.Linear(h_dim, h_dim),
+            nn.ReLU())
+        self.dec32_mean = nn.Linear(h_dim, y_dim)
+        self.dec32_std = nn.Sequential(
+            nn.Linear(h_dim, y_dim),
+            nn.Softplus())
         
         self.gru16 = nn.GRU(y_dim, rnn16_dim, n_layers)
         self.dec16 = nn.Sequential(
@@ -117,6 +129,23 @@ class PROG_RNN(nn.Module):
         loss = 0
         count = 0
 
+        if step_size == 32:
+            h32 = Variable(torch.zeros(self.params['n_layers'], data.size(1), self.params['rnn32_dim']))
+            if self.params['cuda']:
+                h32 = h32.cuda()
+            for t in range(data.shape[0] - 1):
+                state_t = data[t].clone()
+                next_t = data[t+1].clone()
+                
+                _, h32 = self.gru32(state_t.unsqueeze(0), h32)
+                dec_t = self.dec32(h32[-1])
+                dec_mean_t = self.dec32_mean(dec_t)
+                dec_std_t = self.dec32_std(dec_t)
+                
+                loss += nll_gauss(dec_mean_t, dec_std_t, next_t)
+                count += 1
+        
+
         if step_size == 16:
             h16 = Variable(torch.zeros(self.params['n_layers'], data.size(1), self.params['rnn16_dim']))
             if self.params['cuda']:
@@ -124,14 +153,18 @@ class PROG_RNN(nn.Module):
             for t in range(data.shape[0] - 1):
                 state_t = data[t].clone()
                 next_t = data[t+1].clone()
+                macro_t = data[t+2].clone()
+
                 
                 _, h16 = self.gru16(state_t.unsqueeze(0), h16)
-                dec_t = self.dec16(h16[-1])
+                dec_t = self.dec16(torch.cat([h16[-1], macro_t], 1))
                 dec_mean_t = self.dec16_mean(dec_t)
                 dec_std_t = self.dec16_std(dec_t)
                 
                 loss += nll_gauss(dec_mean_t, dec_std_t, next_t)
                 count += 1
+
+                _, h16 = self.gru8(next_t.unsqueeze(0), h16)
         
         if step_size == 8:
             h8 = Variable(torch.zeros(self.params['n_layers'], data.size(1), self.params['rnn8_dim']))
@@ -210,6 +243,32 @@ class PROG_RNN(nn.Module):
                 _, h1 = self.gru1(next_t.unsqueeze(0), h1)
     
         return loss / count / data.shape[1]
+
+    def sample32(self, data, seq_len=0, macro_data=None):
+        # data: seq_length * batch * 10
+        print(data.shape)
+        h32 = Variable(torch.zeros(self.params['n_layers'], data.size(1), self.params['rnn32_dim']))
+        print (h32.shape)
+        if self.params['cuda']:
+            h32 = h32.cuda()
+        if seq_len == 0:
+            seq_len = data.shape[0]
+        ret = []
+        state_t = data[0]
+        ret.append(state_t)      
+
+        for t in range(seq_len - 1):
+            print(state_t.shape)
+            print (state_t.unsqueeze(0).shape)
+            print (h32.size(-1))
+            _, h32 = self.gru32(state_t.unsqueeze(0), h32)
+            dec_t = self.dec32(h32[-1])
+            dec_mean_t = self.dec32_mean(dec_t)
+            dec_std_t = self.dec32_std(dec_t)
+            state_t = sample_gauss(dec_mean_t, dec_std_t)
+            ret.append(state_t)
+        
+        return torch.stack(ret, 0)
     
     def sample16(self, data, seq_len=0, macro_data=None):
         # data: seq_length * batch * 10
@@ -218,19 +277,28 @@ class PROG_RNN(nn.Module):
             h16 = h16.cuda()
         if seq_len == 0:
             seq_len = data.shape[0]
+
+        macro_seq_len = seq_len // 2 + 1
+        if macro_data is None:
+            macro_data = self.sample16(data[::2], macro_seq_len)
+
         ret = []
         state_t = data[0]
         ret.append(state_t)      
 
         for t in range(seq_len - 1):
+            macro_t = macro_data[t+1]
             _, h16 = self.gru16(state_t.unsqueeze(0), h16)
-            dec_t = self.dec16(h16[-1])
+            dec_t = self.dec16(torch.cat([h16[-1], macro_t], 1))
             dec_mean_t = self.dec16_mean(dec_t)
             dec_std_t = self.dec16_std(dec_t)
             state_t = sample_gauss(dec_mean_t, dec_std_t)
             ret.append(state_t)
+            ret.append(macro_t)
+            _, h16 = self.gru8(state_t.unsqueeze(0), h16)
+            state_t = macro_t
         
-        return torch.stack(ret, 0)
+        return torch.stack(ret, 0)[:seq_len]
 
     def sample8(self, data, seq_len=0, macro_data=None):
         # data: seq_length * batch * 10

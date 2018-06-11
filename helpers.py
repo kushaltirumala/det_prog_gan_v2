@@ -92,8 +92,8 @@ def test_sample(policy_net, expert_data, use_gpu, i_iter, size=64, name="samplin
     data = Variable(data.squeeze().transpose(0, 1))
     # data: seq_length * batch_size * 10
 
-
-    samples16 = policy_net.sample16(data[::16], seq_len = 5)
+    samples32 = policy_net.sample16(data[::32], seq_len = 2)
+    samples16 = policy_net.sample16(data[::16], seq_len = 5, macro_data=samples32)
     samples8 = policy_net.sample8(data[::8], seq_len = 8, macro_data = samples16)
     samples4 = policy_net.sample4(data[::4], seq_len = 14, macro_data = samples8)
     samples2 = policy_net.sample2(data[::2], seq_len = 26, macro_data = samples4)
@@ -104,6 +104,8 @@ def test_sample(policy_net, expert_data, use_gpu, i_iter, size=64, name="samplin
 
 
     if one_level:
+        if one_level == 32:
+            samples_real = samples32
         if one_level == 16:
             samples_real = samples16
         if one_level == 8:
@@ -150,7 +152,9 @@ def collect_samples(policy_net, expert_data, use_gpu, i_iter, step_size, size=64
         samples = policy_net.sample8(data)
     elif step_size == 16:
         samples = policy_net.sample16(data)
-    
+    elif step_size == 32:
+        samples = policy_net.sample32(data)
+
     states = samples[:-1, :, :]
     actions = samples[1:, :, :]
     exp_states = data[:-1, :, :]
@@ -257,6 +261,8 @@ def test_fixed_data(policy_net, exp_state, name, i_iter, step_size, num_draw=1, 
         samples = policy_net.sample8(exp_state)
     elif step_size == 16:
         samples = policy_net.sample16(exp_state)
-    
+    elif step_size == 32:
+        samples = policy_net.sample32(exp_state)
+
     draw_data(samples.data, name, i_iter, path=path, test=True)
     draw_data(exp_state.data, name + '_expert', i_iter, path=path, test=True)

@@ -38,6 +38,7 @@ parser.add_argument('--rnn2_dim', type=int, required=True)
 parser.add_argument('--rnn4_dim', type=int, required=True)
 parser.add_argument('--rnn8_dim', type=int, required=True)
 parser.add_argument('--rnn16_dim', type=int, required=True)
+parser.add_argument('--rnn32_dim', type=int, required=True)
 parser.add_argument('--n_layers', type=int, required=False, default=2)
 parser.add_argument('--seed', type=int, required=False, default=345)
 parser.add_argument('--clip', type=int, required=True, help='gradient clipping')
@@ -76,6 +77,7 @@ params = {
     'rnn4_dim' : args.rnn4_dim,
     'rnn8_dim' : args.rnn8_dim,
     'rnn16_dim' : args.rnn16_dim,
+    'rnn32_dim' : args.rnn16_dim,
     'n_layers' : args.n_layers,
     'discrim_rnn_dim' : args.discrim_rnn_dim,
     'discrim_num_layers' : args.discrim_layers,
@@ -130,9 +132,9 @@ win_pre_out_of_bound = None
 win_pre_step_change = None
 
 # continue a previous experiment
-if args.cont and args.subsample < 16:
-    print("loading model with step size {}...".format(args.subsample*8))
-    state_dict = torch.load(save_path+'model/policy_step'+str(args.subsample*8)+'_training.pth')
+if args.cont and args.subsample < 32:
+    print("loading model with step size {}...".format(args.subsample*2))
+    state_dict = torch.load(save_path+'model/policy_step'+str(args.subsample*2)+'_training.pth')
     policy_net.load_state_dict(state_dict, strict=False)
     
     test_loss = run_epoch(False, args.subsample, policy_net, test_data, clip)
