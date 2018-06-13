@@ -281,7 +281,7 @@ for i_iter in range(args.max_iter_num):
     
     # draw and stats
     if i_iter % args.draw_interval == 0:
-        test_fixed_data(policy_net, fixed_test_data, 'fixed_test', i_iter, args.subsample, 1)
+        test_fixed_data(policy_net, fixed_test_data, 'fixed_test', i_iter, args.subsample, 1, path="imgs/")
         _, _, _, _, _, _, mod_stats, exp_stats = \
             collect_samples(policy_net, test_data, use_gpu, i_iter, args.subsample, draw=True)
     
